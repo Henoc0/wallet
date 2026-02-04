@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import Wallet from './artifacts/contracts/wallet.sol/wallet.json';
 import './App.css';
 
-let WalletAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+let WalletAddress = "0xa4c7b3Ed5fde419BAC238e5cF1A76884D18eFfA8";
 
 function App() {
 
@@ -12,6 +12,9 @@ function App() {
   const [amountWithdraw, setAmountWithdraw] = useState();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [receiver, setReceiver] = useState('');
+  const [amountTransfer, setAmountTransfer] = useState('');
+
 
   useEffect(() => {
     getBalance();
@@ -58,7 +61,7 @@ function App() {
   }
 
   async function transfer() {
-    if (!amountSend || parseFloat(amountSend) <= 0) {
+    if (!amountSend || parseFloat(amountSend) < 0) {
       setError('Veuillez entrer un montant valide.');
       return;
     }
@@ -79,7 +82,10 @@ function App() {
 
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
+      await provider.send("eth_requestAccounts", []);
       const amountToSend = ethers.parseEther(amountSend);
+      // const network = await provider.getNetwork();
+
 
       // On laisse le nœud / MetaMask gérer le cas « insufficient funds »
       const tx = {
@@ -90,6 +96,7 @@ function App() {
 
       const transaction = await signer.sendTransaction(tx);
       setSuccess('Transaction en cours...');
+
       await transaction.wait();
       setAmountSend('');
       await getBalance();
@@ -101,8 +108,12 @@ function App() {
       } else if (err?.message) {
         if (err.message.includes('user rejected')) {
           errorMessage = 'Transaction annulée par l\'utilisateur.';
+          console.error("Chain ID :", new ethers.BrowserProvider(window.ethereum).getNetwork().chainId);
+
         } else if (err.message.includes('insufficient funds')) {
           errorMessage = 'Solde insuffisant dans votre compte MetaMask.';
+
+          
         } else {
           errorMessage = err.message;
         }
@@ -113,10 +124,44 @@ function App() {
       }
       setError(errorMessage);
       setSuccess('');
-      console.error('Erreur transfer:', err);
+
     }
   }
 
+  async function transferToAddress() {
+    if (!receiver || !ethers.isAddress(receiver)) {
+      setError("Adresse Ethereum invalide.");
+      return;
+    }
+  
+    if (!amountTransfer || parseFloat(amountTransfer) <= 0) {
+      setError("Montant invalide.");
+      return;
+    }
+  
+    setError('');
+    setSuccess('');
+  
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+  
+      const tx = await signer.sendTransaction({
+        to: receiver,
+        value: ethers.parseEther(amountTransfer),
+      });
+  
+      setSuccess("Transaction en cours...");
+      await tx.wait();
+  
+      setReceiver('');
+      setAmountTransfer('');
+      setSuccess("ETH envoyé avec succès !");
+    } catch (err) {
+      setError(err.message || "Erreur lors du transfert.");
+    }
+  }
+  
   async function withdraw() {
     if(!amountWithdraw || parseFloat(amountWithdraw) <= 0) {
       setError('Veuillez entrer un montant valide.');
@@ -181,28 +226,69 @@ function App() {
   return (
     <div className="App">
       <div className="container">
+  
         <div className="logo">
           <i className="fab fa-ethereum"></i>
         </div>
+  
         {error && <p className="error">{error}</p>}
         {success && <p className="success">{success}</p>}
-        <h2>{ethers.formatEther(balance || '0')} <span className="eth">eth</span></h2>
+  
+        <h2>
+          {ethers.formatEther(balance || '0')} <span className="eth">ETH</span>
+        </h2>
+  
         <div className="wallet__flex">
+  
+          {/* DÉPÔT VERS LE CONTRAT */}
           <div className="walletG">
-            <h3>Envoyer de l'ether</h3>
-            <input type="text" placeholder="Montant en Ethers" onChange={changeAmountSend} />
+            <h3>Déposer de l'argent</h3>
+            <input
+              type="text"
+              placeholder="Montant en ETH"
+              value={amountSend || ''}
+              onChange={changeAmountSend}
+            />
             <button onClick={transfer}>Envoyer</button>
           </div>
+  
+          {/* RETRAIT DEPUIS LE CONTRAT */}
           <div className="walletD">
-            <h3>Retirer de l'ether</h3>
-            <input type="text" placeholder="Montant en Ethers" onChange={changeAmountWithdraw} />
+            <h3>Retirer de l'argent</h3>
+            <input
+              type="text"
+              placeholder="Montant en ETH"
+              value={amountWithdraw || ''}
+              onChange={changeAmountWithdraw}
+            />
             <button onClick={withdraw}>Retirer</button>
           </div>
+  
+          {/* TRANSFERT VERS UNE AUTRE ADRESSE */}
+          <div className="walletC">
+            <h3>Transférer de l'argent</h3>
+            <input
+              type="text"
+              placeholder="Adresse Ethereum"
+              value={receiver}
+              onChange={(e) => setReceiver(e.target.value)}
+            />
+            <input
+              type="text"
+              placeholder="Montant en ETH"
+              value={amountTransfer}
+              onChange={(e) => setAmountTransfer(e.target.value)}
+            />
+            <button onClick={transferToAddress}>
+              Transférer
+            </button>
+          </div>
+  
         </div>
-
       </div>
     </div>
   );
+  
 }
 
 export default App;

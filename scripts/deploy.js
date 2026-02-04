@@ -1,6 +1,7 @@
 // This setup uses Hardhat to deploy smart contracts.
 // Learn more about it at https://hardhat.org
 
+import hre from "hardhat"
 
 async function main() {
   const Wallet = await hre.ethers.getContractFactory("wallet")

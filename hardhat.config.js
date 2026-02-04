@@ -1,4 +1,5 @@
 import "@nomicfoundation/hardhat-toolbox";
+import { config } from "dotenv";
 
 /** @type {import('hardhat/config').HardhatUserConfig} */
 const config = {
@@ -7,8 +8,9 @@ const config = {
     artifacts: "./src/artifacts",
   },
   networks: {
-    hardhat: {
-      chainId: 31337,
+    sepolia: {
+      url: process.env.SEPOLIA_URL,
+      accounts: [process.env.PRIVATE_KEY],
     },
   },
 };
